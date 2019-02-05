@@ -34,79 +34,11 @@ topology_template:
             node: apache
             capability: org.alien4cloud.capabilities.ApacheContainer
             relationship: org.alien4cloud.relationships.WordpressHostedOnApache
-        - php:
-            node: php
-            capability: org.alien4cloud.capabilities.PHPModule
-            relationship: org.alien4cloud.relationships.WordpressConnectToPHP
       capabilities:
         app_endpoint:
           properties:
             protocol: tcp
             secure: false
-            network_name: PRIVATE
-            initiator: source
-    php:
-      type: org.alien4cloud.nodes.PHP
-      properties:
-        component_version: 5
-      requirements:
-        - host:
-            node: computeWww
-            capability: tosca.capabilities.Container
-            relationship: tosca.relationships.HostedOn
-    computeDb:
-      type: tosca.nodes.Compute
-      requirements:
-        - dependency:
-            node: PHP
-            capability: tosca.capabilities.Node
-            relationship: tosca.relationships.DependsOn
-      capabilities:
-        host:
-          properties:
-            num_cpus: 1
-            cpu_frequency: "1 GHz"
-            disk_size: "1 GB"
-            mem_size: "1024 MB"
-        os:
-          properties:
-            architecture: "x86_64"
-            type: linux
-            distribution: { get_input: os_distribution }
-        scalable:
-          properties:
-            min_instances: 1
-            max_instances: 1
-            default_instances: 1
-        endpoint:
-          properties:
-            secure: true
-            protocol: tcp
-            network_name: PRIVATE
-            initiator: source
-    computeWww:
-      type: tosca.nodes.Compute
-      capabilities:
-        host:
-          properties:
-            num_cpus: 1
-            cpu_frequency: "1 GHz"
-            disk_size: "1 GB"
-            mem_size: "1024 MB"
-        os:
-          properties:
-            architecture: "x86_64"
-            type: linux
-            distribution: { get_input: os_distribution }
-        scalable:
-          properties:
-            min_instances: 1
-            max_instances: 1
-            default_instances: 1
-        endpoint:
-          properties:
-            secure: true
-            protocol: tcp
             network_name: PRIVATE
             initiator: source
     apache:
@@ -115,11 +47,6 @@ topology_template:
         component_version: 2.4
         port: 80
         document_root: "/var/www"
-      requirements:
-        - host:
-            node: computeWww
-            capability: tosca.capabilities.Container
-            relationship: tosca.relationships.HostedOn
       capabilities:
         data_endpoint:
           properties:
@@ -133,39 +60,12 @@ topology_template:
             protocol: tcp
             network_name: PRIVATE
             initiator: source
-    PHP:
-      type: org.alien4cloud.nodes.PHP
-      properties:
-        component_version: 5
-      requirements:
-        - dependency:
-            node: computeWww
-            capability: tosca.capabilities.Node
-            relationship: tosca.relationships.DependsOn
   outputs:
     wordpress_wordpress_url:
       value: { get_attribute: [ wordpress, wordpress_url ] }
   workflows:
     install:
       steps:
-        start_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.start
-          on-success:
-            - php_started
-        php_starting:
-          node: php
-          activity:
-            set_state: starting
-          on-success:
-            - start_php
-        computeDb_install:
-          node: computeDb
-          activity:
-            delegate: install
-          on-success:
-            - wordpress_configuring
         wordpress_creating:
           node: wordpress
           activity:
@@ -178,18 +78,6 @@ topology_template:
             set_state: creating
           on-success:
             - create_apache
-        php_creating:
-          node: php
-          activity:
-            set_state: creating
-          on-success:
-            - create_php
-        php_configuring:
-          node: php
-          activity:
-            set_state: configuring
-          on-success:
-            - configure_php
         create_wordpress:
           node: wordpress
           activity:
@@ -208,18 +96,6 @@ topology_template:
             call_operation: tosca.interfaces.node.lifecycle.Standard.configure
           on-success:
             - wordpress_configured
-        php_created:
-          node: php
-          activity:
-            set_state: created
-          on-success:
-            - php_configuring
-        create_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.create
-          on-success:
-            - php_created
         wordpress_started:
           node: wordpress
           activity:
@@ -236,14 +112,6 @@ topology_template:
             call_operation: tosca.interfaces.node.lifecycle.Standard.start
           on-success:
             - apache_started
-        computeWww_install:
-          node: computeWww
-          activity:
-            delegate: install
-          on-success:
-            - apache_initial
-            - php_initial
-            - PHP_initial
         configure_apache:
           node: apache
           activity:
@@ -262,12 +130,6 @@ topology_template:
             set_state: configured
           on-success:
             - wordpress_starting
-        php_configured:
-          node: php
-          activity:
-            set_state: configured
-          on-success:
-            - php_starting
         apache_configuring:
           node: apache
           activity:
@@ -297,7 +159,6 @@ topology_template:
           activity:
             set_state: created
           on-success:
-            - php_configuring
             - wordpress_configuring
         wordpress_starting:
           node: wordpress
@@ -311,24 +172,6 @@ topology_template:
             call_operation: tosca.interfaces.node.lifecycle.Standard.start
           on-success:
             - wordpress_started
-        php_started:
-          node: php
-          activity:
-            set_state: started
-          on-success:
-            - wordpress_configuring
-        php_initial:
-          node: php
-          activity:
-            set_state: initial
-          on-success:
-            - php_creating
-        configure_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
-          on-success:
-            - php_configured
         apache_started:
           node: apache
           activity:
@@ -341,72 +184,8 @@ topology_template:
             set_state: configuring
           on-success:
             - configure_wordpress
-        PHP_initial:
-          node: PHP
-          activity:
-            set_state: initial
-          on-success:
-            - PHP_creating
-        PHP_creating:
-          node: PHP
-          activity:
-            set_state: creating
-          on-success:
-            - create_PHP
-        create_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.create
-          on-success:
-            - PHP_created
-        PHP_created:
-          node: PHP
-          activity:
-            set_state: created
-          on-success:
-            - PHP_configuring
-        PHP_configuring:
-          node: PHP
-          activity:
-            set_state: configuring
-          on-success:
-            - configure_PHP
-        configure_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
-          on-success:
-            - PHP_configured
-        PHP_configured:
-          node: PHP
-          activity:
-            set_state: configured
-          on-success:
-            - PHP_starting
-        PHP_starting:
-          node: PHP
-          activity:
-            set_state: starting
-          on-success:
-            - start_PHP
-        start_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.start
-          on-success:
-            - PHP_started
-        PHP_started:
-          node: PHP
-          activity:
-            set_state: started
     uninstall:
       steps:
-        stop_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
-          on-success:
-            - php_stopped
         wordpress_stopping:
           node: wordpress
           activity:
@@ -423,46 +202,12 @@ topology_template:
           node: apache
           activity:
             set_state: deleted
-          on-success:
-            - computeWww_uninstall
         apache_stopping:
           node: apache
           activity:
             set_state: stopping
           on-success:
             - stop_apache
-        php_deleting:
-          node: php
-          activity:
-            set_state: deleting
-          on-success:
-            - delete_php
-        computeDb_uninstall:
-          node: computeDb
-          activity:
-            delegate: uninstall
-        php_stopped:
-          node: php
-          activity:
-            set_state: stopped
-          on-success:
-            - php_deleting
-        delete_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
-          on-success:
-            - php_deleted
-        php_deleted:
-          node: php
-          activity:
-            set_state: deleted
-          on-success:
-            - computeWww_uninstall
-        computeWww_uninstall:
-          node: computeWww
-          activity:
-            delegate: uninstall
         apache_deleting:
           node: apache
           activity:
@@ -493,20 +238,12 @@ topology_template:
             call_operation: tosca.interfaces.node.lifecycle.Standard.stop
           on-success:
             - wordpress_stopped
-        php_stopping:
-          node: php
-          activity:
-            set_state: stopping
-          on-success:
-            - stop_php
         wordpress_stopped:
           node: wordpress
           activity:
             set_state: stopped
           on-success:
-            - php_stopping
             - wordpress_deleting
-            - computeDb_uninstall
         wordpress_deleting:
           node: wordpress
           activity:
@@ -519,64 +256,8 @@ topology_template:
             set_state: deleted
           on-success:
             - apache_stopping
-        PHP_stopping:
-          node: PHP
-          activity:
-            set_state: stopping
-          on-success:
-            - stop_PHP
-        stop_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
-          on-success:
-            - PHP_stopped
-        PHP_stopped:
-          node: PHP
-          activity:
-            set_state: stopped
-          on-success:
-            - PHP_deleting
-        PHP_deleting:
-          node: PHP
-          activity:
-            set_state: deleting
-          on-success:
-            - delete_PHP
-        delete_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
-          on-success:
-            - PHP_deleted
-        PHP_deleted:
-          node: PHP
-          activity:
-            set_state: deleted
-          on-success:
-            - computeWww_uninstall
     start:
       steps:
-        start_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.start
-          on-success:
-            - php_started
-        php_starting:
-          node: php
-          activity:
-            set_state: starting
-          on-success:
-            - start_php
-        computeWww_start:
-          node: computeWww
-          activity:
-            delegate: start
-          on-success:
-            - php_starting
-            - apache_starting
-            - PHP_starting
         wordpress_starting:
           node: wordpress
           activity:
@@ -589,18 +270,6 @@ topology_template:
             call_operation: tosca.interfaces.node.lifecycle.Standard.start
           on-success:
             - wordpress_started
-        php_started:
-          node: php
-          activity:
-            set_state: started
-          on-success:
-            - wordpress_starting
-        computeDb_start:
-          node: computeDb
-          activity:
-            delegate: start
-          on-success:
-            - wordpress_starting
         wordpress_started:
           node: wordpress
           activity:
@@ -623,40 +292,14 @@ topology_template:
             set_state: started
           on-success:
             - wordpress_starting
-        PHP_starting:
-          node: PHP
-          activity:
-            set_state: starting
-          on-success:
-            - start_PHP
-        start_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.start
-          on-success:
-            - PHP_started
-        PHP_started:
-          node: PHP
-          activity:
-            set_state: started
     stop:
       steps:
-        stop_php:
-          node: php
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
-          on-success:
-            - php_stopped
         wordpress_stopping:
           node: wordpress
           activity:
             set_state: stopping
           on-success:
             - stop_wordpress
-        computeWww_stop:
-          node: computeWww
-          activity:
-            delegate: stop
         stop_apache:
           node: apache
           activity:
@@ -673,51 +316,15 @@ topology_template:
           node: apache
           activity:
             set_state: stopped
-          on-success:
-            - computeWww_stop
         stop_wordpress:
           node: wordpress
           activity:
             call_operation: tosca.interfaces.node.lifecycle.Standard.stop
           on-success:
             - wordpress_stopped
-        computeDb_stop:
-          node: computeDb
-          activity:
-            delegate: stop
-        php_stopping:
-          node: php
-          activity:
-            set_state: stopping
-          on-success:
-            - stop_php
-        php_stopped:
-          node: php
-          activity:
-            set_state: stopped
-          on-success:
-            - computeWww_stop
         wordpress_stopped:
           node: wordpress
           activity:
             set_state: stopped
           on-success:
             - apache_stopping
-        PHP_stopping:
-          node: PHP
-          activity:
-            set_state: stopping
-          on-success:
-            - stop_PHP
-        stop_PHP:
-          node: PHP
-          activity:
-            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
-          on-success:
-            - PHP_stopped
-        PHP_stopped:
-          node: PHP
-          activity:
-            set_state: stopped
-          on-success:
-            - computeWww_stop
