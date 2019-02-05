@@ -1,0 +1,649 @@
+tosca_definitions_version: alien_dsl_1_4_0
+
+metadata:
+  template_name: Wordpress
+  template_version: 0.1.0-SNAPSHOT
+  template_author: admin
+
+description: ""
+
+imports:
+  - wordpress-type:1.4.0-SNAPSHOT
+  - tosca-normative-types:1.0.0-ALIEN14
+  - php-type:1.4.0-SNAPSHOT
+  - mysql-type:1.4.0-SNAPSHOT
+  - apache-type:1.4.0-SNAPSHOT
+
+topology_template:
+  inputs:
+    os_distribution:
+      type: string
+      required: true
+      default: ubuntu
+      constraints:
+        - valid_values: [debian, ubuntu, knoppix]
+      description: "The host Operating System (OS) architecture."
+  node_templates:
+    Compute:
+      type: tosca.nodes.Compute
+      capabilities:
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    Apache:
+      type: org.alien4cloud.nodes.Apache
+      properties:
+        component_version: 2.4
+        port: 80
+        document_root: "/var/www"
+      requirements:
+        - host:
+            node: Compute
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+      capabilities:
+        data_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+        admin_endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    PHP:
+      type: org.alien4cloud.nodes.PHP
+      properties:
+        component_version: 5
+      requirements:
+        - host:
+            node: Compute
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+    Wordpress:
+      type: org.alien4cloud.nodes.Wordpress
+      properties:
+        zip_url: "https://wordpress.org/latest.zip"
+        context_root: "/"
+      requirements:
+        - host:
+            node: Apache
+            capability: org.alien4cloud.capabilities.ApacheContainer
+            relationship: org.alien4cloud.relationships.WordpressHostedOnApache
+      capabilities:
+        app_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+    Mysql:
+      type: org.alien4cloud.nodes.Mysql
+      properties:
+        port: 3306
+        name: wordpress
+        db_user: pass
+        db_password: pass
+        bind_address: true
+        storage_path: "/mountedStorage"
+      capabilities:
+        database_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
+  workflows:
+    install:
+      steps:
+        Compute_install:
+          node: Compute
+          activity:
+            delegate: install
+          on-success:
+            - Apache_initial
+            - PHP_initial
+        Apache_initial:
+          node: Apache
+          activity:
+            set_state: initial
+          on-success:
+            - Apache_creating
+        Apache_creating:
+          node: Apache
+          activity:
+            set_state: creating
+          on-success:
+            - create_Apache
+        create_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.create
+          on-success:
+            - Apache_created
+        Apache_created:
+          node: Apache
+          activity:
+            set_state: created
+          on-success:
+            - Apache_configuring
+        Apache_configuring:
+          node: Apache
+          activity:
+            set_state: configuring
+          on-success:
+            - configure_Apache
+        configure_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
+          on-success:
+            - Apache_configured
+        Apache_configured:
+          node: Apache
+          activity:
+            set_state: configured
+          on-success:
+            - Apache_starting
+        Apache_starting:
+          node: Apache
+          activity:
+            set_state: starting
+          on-success:
+            - start_Apache
+        start_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Apache_started
+        Apache_started:
+          node: Apache
+          activity:
+            set_state: started
+          on-success:
+            - Wordpress_initial
+        PHP_initial:
+          node: PHP
+          activity:
+            set_state: initial
+          on-success:
+            - PHP_creating
+        PHP_creating:
+          node: PHP
+          activity:
+            set_state: creating
+          on-success:
+            - create_PHP
+        create_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.create
+          on-success:
+            - PHP_created
+        PHP_created:
+          node: PHP
+          activity:
+            set_state: created
+          on-success:
+            - PHP_configuring
+        PHP_configuring:
+          node: PHP
+          activity:
+            set_state: configuring
+          on-success:
+            - configure_PHP
+        configure_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
+          on-success:
+            - PHP_configured
+        PHP_configured:
+          node: PHP
+          activity:
+            set_state: configured
+          on-success:
+            - PHP_starting
+        PHP_starting:
+          node: PHP
+          activity:
+            set_state: starting
+          on-success:
+            - start_PHP
+        start_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - PHP_started
+        PHP_started:
+          node: PHP
+          activity:
+            set_state: started
+        Wordpress_initial:
+          node: Wordpress
+          activity:
+            set_state: initial
+          on-success:
+            - Wordpress_creating
+        Wordpress_creating:
+          node: Wordpress
+          activity:
+            set_state: creating
+          on-success:
+            - create_Wordpress
+        create_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.create
+          on-success:
+            - Wordpress_created
+        Wordpress_created:
+          node: Wordpress
+          activity:
+            set_state: created
+          on-success:
+            - Wordpress_configuring
+        Wordpress_configuring:
+          node: Wordpress
+          activity:
+            set_state: configuring
+          on-success:
+            - configure_Wordpress
+        configure_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
+          on-success:
+            - Wordpress_configured
+        Wordpress_configured:
+          node: Wordpress
+          activity:
+            set_state: configured
+          on-success:
+            - Wordpress_starting
+        Wordpress_starting:
+          node: Wordpress
+          activity:
+            set_state: starting
+          on-success:
+            - start_Wordpress
+        start_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Wordpress_started
+        Wordpress_started:
+          node: Wordpress
+          activity:
+            set_state: started
+        Mysql_initial:
+          node: Mysql
+          activity:
+            set_state: initial
+          on-success:
+            - Mysql_creating
+        Mysql_creating:
+          node: Mysql
+          activity:
+            set_state: creating
+          on-success:
+            - create_Mysql
+        create_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.create
+          on-success:
+            - Mysql_created
+        Mysql_created:
+          node: Mysql
+          activity:
+            set_state: created
+          on-success:
+            - Mysql_configuring
+        Mysql_configuring:
+          node: Mysql
+          activity:
+            set_state: configuring
+          on-success:
+            - configure_Mysql
+        configure_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
+          on-success:
+            - Mysql_configured
+        Mysql_configured:
+          node: Mysql
+          activity:
+            set_state: configured
+          on-success:
+            - Mysql_starting
+        Mysql_starting:
+          node: Mysql
+          activity:
+            set_state: starting
+          on-success:
+            - start_Mysql
+        start_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Mysql_started
+        Mysql_started:
+          node: Mysql
+          activity:
+            set_state: started
+    uninstall:
+      steps:
+        Compute_uninstall:
+          node: Compute
+          activity:
+            delegate: uninstall
+        Apache_stopping:
+          node: Apache
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Apache
+        stop_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Apache_stopped
+        Apache_stopped:
+          node: Apache
+          activity:
+            set_state: stopped
+          on-success:
+            - Apache_deleting
+        Apache_deleting:
+          node: Apache
+          activity:
+            set_state: deleting
+          on-success:
+            - delete_Apache
+        delete_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
+          on-success:
+            - Apache_deleted
+        Apache_deleted:
+          node: Apache
+          activity:
+            set_state: deleted
+          on-success:
+            - Compute_uninstall
+        PHP_stopping:
+          node: PHP
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_PHP
+        stop_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - PHP_stopped
+        PHP_stopped:
+          node: PHP
+          activity:
+            set_state: stopped
+          on-success:
+            - PHP_deleting
+        PHP_deleting:
+          node: PHP
+          activity:
+            set_state: deleting
+          on-success:
+            - delete_PHP
+        delete_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
+          on-success:
+            - PHP_deleted
+        PHP_deleted:
+          node: PHP
+          activity:
+            set_state: deleted
+          on-success:
+            - Compute_uninstall
+        Wordpress_stopping:
+          node: Wordpress
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Wordpress
+        stop_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Wordpress_stopped
+        Wordpress_stopped:
+          node: Wordpress
+          activity:
+            set_state: stopped
+          on-success:
+            - Wordpress_deleting
+        Wordpress_deleting:
+          node: Wordpress
+          activity:
+            set_state: deleting
+          on-success:
+            - delete_Wordpress
+        delete_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
+          on-success:
+            - Wordpress_deleted
+        Wordpress_deleted:
+          node: Wordpress
+          activity:
+            set_state: deleted
+          on-success:
+            - Apache_stopping
+        Mysql_stopping:
+          node: Mysql
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Mysql
+        stop_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Mysql_stopped
+        Mysql_stopped:
+          node: Mysql
+          activity:
+            set_state: stopped
+          on-success:
+            - Mysql_deleting
+        Mysql_deleting:
+          node: Mysql
+          activity:
+            set_state: deleting
+          on-success:
+            - delete_Mysql
+        delete_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
+          on-success:
+            - Mysql_deleted
+        Mysql_deleted:
+          node: Mysql
+          activity:
+            set_state: deleted
+    start:
+      steps:
+        Compute_start:
+          node: Compute
+          activity:
+            delegate: start
+          on-success:
+            - Apache_starting
+            - PHP_starting
+        Apache_starting:
+          node: Apache
+          activity:
+            set_state: starting
+          on-success:
+            - start_Apache
+        start_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Apache_started
+        Apache_started:
+          node: Apache
+          activity:
+            set_state: started
+          on-success:
+            - Wordpress_starting
+        PHP_starting:
+          node: PHP
+          activity:
+            set_state: starting
+          on-success:
+            - start_PHP
+        start_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - PHP_started
+        PHP_started:
+          node: PHP
+          activity:
+            set_state: started
+        Wordpress_starting:
+          node: Wordpress
+          activity:
+            set_state: starting
+          on-success:
+            - start_Wordpress
+        start_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Wordpress_started
+        Wordpress_started:
+          node: Wordpress
+          activity:
+            set_state: started
+        Mysql_starting:
+          node: Mysql
+          activity:
+            set_state: starting
+          on-success:
+            - start_Mysql
+        start_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Mysql_started
+        Mysql_started:
+          node: Mysql
+          activity:
+            set_state: started
+    stop:
+      steps:
+        Compute_stop:
+          node: Compute
+          activity:
+            delegate: stop
+        Apache_stopping:
+          node: Apache
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Apache
+        stop_Apache:
+          node: Apache
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Apache_stopped
+        Apache_stopped:
+          node: Apache
+          activity:
+            set_state: stopped
+          on-success:
+            - Compute_stop
+        PHP_stopping:
+          node: PHP
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_PHP
+        stop_PHP:
+          node: PHP
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - PHP_stopped
+        PHP_stopped:
+          node: PHP
+          activity:
+            set_state: stopped
+          on-success:
+            - Compute_stop
+        Wordpress_stopping:
+          node: Wordpress
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Wordpress
+        stop_Wordpress:
+          node: Wordpress
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Wordpress_stopped
+        Wordpress_stopped:
+          node: Wordpress
+          activity:
+            set_state: stopped
+          on-success:
+            - Apache_stopping
+        Mysql_stopping:
+          node: Mysql
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Mysql
+        stop_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Mysql_stopped
+        Mysql_stopped:
+          node: Mysql
+          activity:
+            set_state: stopped
