@@ -24,7 +24,7 @@ topology_template:
       description: The host Operating System (OS) architecture.
       default: ubuntu
   node_templates:
-    wordpress:
+    Wordpress:
       type: org.alien4cloud.nodes.Wordpress
       requirements:
         - host: apache
