@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_1_4_0
 
 metadata:
   template_name: Testapp:0.1.0-SNAPSHOT
-  template_version: 0.1.0-SNAPSHOT]
+  template_version: 0.1.0-SNAPSHOT
   template_author: alien4cloud
 
 description: Topology to deploy a Wordpress CMS on an apache webserver and a MySQL database.
