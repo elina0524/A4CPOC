@@ -38,6 +38,10 @@ topology_template:
             node: php
             capability: org.alien4cloud.capabilities.PHPModule
             relationship: org.alien4cloud.relationships.WordpressConnectToPHP
+        - database:
+            node: AbstractMysql
+            capability: org.alien4cloud.capabilities.MysqlDatabaseEndpoint
+            relationship: org.alien4cloud.relationships.WordpressConnectToMysql
       capabilities:
         app_endpoint:
           properties:
@@ -101,6 +105,15 @@ topology_template:
           properties:
             secure: true
             protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    AbstractMysql:
+      type: org.alien4cloud.nodes.AbstractMysql
+      capabilities:
+        database_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
             network_name: PRIVATE
             initiator: source
   outputs:
@@ -295,6 +308,12 @@ topology_template:
             set_state: configuring
           on-success:
             - configure_wordpress
+        AbstractMysql_install:
+          node: AbstractMysql
+          activity:
+            delegate: install
+          on-success:
+            - wordpress_initial
     uninstall:
       steps:
         stop_php:
@@ -409,7 +428,12 @@ topology_template:
           activity:
             set_state: deleted
           on-success:
+            - AbstractMysql_uninstall
             - apache_stopping
+        AbstractMysql_uninstall:
+          node: AbstractMysql
+          activity:
+            delegate: uninstall
     start:
       steps:
         start_php:
@@ -471,6 +495,12 @@ topology_template:
             set_state: started
           on-success:
             - wordpress_starting
+        AbstractMysql_start:
+          node: AbstractMysql
+          activity:
+            delegate: start
+          on-success:
+            - wordpress_starting
     stop:
       steps:
         stop_php:
@@ -530,4 +560,9 @@ topology_template:
           activity:
             set_state: stopped
           on-success:
+            - AbstractMysql_stop
             - apache_stopping
+        AbstractMysql_stop:
+          node: AbstractMysql
+          activity:
+            delegate: stop
