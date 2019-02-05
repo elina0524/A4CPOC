@@ -7,6 +7,10 @@ metadata:
 
 description: ""
 
+imports:
+  - tosca-normative-types:1.0.0-ALIEN14
+  - mysql-type:1.4.0-SNAPSHOT
+
 topology_template:
   inputs:
     os_distribution:
@@ -17,8 +21,152 @@ topology_template:
         - valid_values: [debian, ubuntu, knoppix]
       description: "The host Operating System (OS) architecture."
   node_templates:
+    Mysql:
+      type: org.alien4cloud.nodes.Mysql
+      properties:
+        port: 3306
+        name: wordpress
+        db_user: pass
+        db_password: pass
+        bind_address: true
+        storage_path: "/mountedStorage"
+      capabilities:
+        database_endpoint:
+          properties:
+            protocol: tcp
+            secure: false
+            network_name: PRIVATE
+            initiator: source
   workflows:
     install:
+      steps:
+        Mysql_initial:
+          node: Mysql
+          activity:
+            set_state: initial
+          on-success:
+            - Mysql_creating
+        Mysql_creating:
+          node: Mysql
+          activity:
+            set_state: creating
+          on-success:
+            - create_Mysql
+        Mysql_configured:
+          node: Mysql
+          activity:
+            set_state: configured
+          on-success:
+            - Mysql_starting
+        Mysql_configuring:
+          node: Mysql
+          activity:
+            set_state: configuring
+          on-success:
+            - configure_Mysql
+        Mysql_started:
+          node: Mysql
+          activity:
+            set_state: started
+        start_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Mysql_started
+        Mysql_starting:
+          node: Mysql
+          activity:
+            set_state: starting
+          on-success:
+            - start_Mysql
+        create_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.create
+          on-success:
+            - Mysql_created
+        configure_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.configure
+          on-success:
+            - Mysql_configured
+        Mysql_created:
+          node: Mysql
+          activity:
+            set_state: created
+          on-success:
+            - Mysql_configuring
     uninstall:
+      steps:
+        delete_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.delete
+          on-success:
+            - Mysql_deleted
+        Mysql_stopped:
+          node: Mysql
+          activity:
+            set_state: stopped
+          on-success:
+            - Mysql_deleting
+        Mysql_deleting:
+          node: Mysql
+          activity:
+            set_state: deleting
+          on-success:
+            - delete_Mysql
+        Mysql_stopping:
+          node: Mysql
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Mysql
+        stop_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Mysql_stopped
+        Mysql_deleted:
+          node: Mysql
+          activity:
+            set_state: deleted
     start:
+      steps:
+        Mysql_started:
+          node: Mysql
+          activity:
+            set_state: started
+        start_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.start
+          on-success:
+            - Mysql_started
+        Mysql_starting:
+          node: Mysql
+          activity:
+            set_state: starting
+          on-success:
+            - start_Mysql
     stop:
+      steps:
+        Mysql_stopped:
+          node: Mysql
+          activity:
+            set_state: stopped
+        Mysql_stopping:
+          node: Mysql
+          activity:
+            set_state: stopping
+          on-success:
+            - stop_Mysql
+        stop_Mysql:
+          node: Mysql
+          activity:
+            call_operation: tosca.interfaces.node.lifecycle.Standard.stop
+          on-success:
+            - Mysql_stopped
