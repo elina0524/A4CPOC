@@ -13,3 +13,10 @@ imports:
 
 topology_template:
   node_templates:
+    LinuxFileSystem:
+      metadata:
+        a4c_edit_x: "-22"
+        a4c_edit_y: "-28"
+      type: alien.nodes.LinuxFileSystem
+      properties:
+        fs_type: ext4
